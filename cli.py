@@ -1,6 +1,6 @@
 import argparse
 
-from pipeline import clean, embed, rank
+from pipeline import clean, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
 
 
@@ -31,6 +31,29 @@ def cmd_rank(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_rerank(args: argparse.Namespace) -> None:
+    try:
+        profile_text = rank.load_profile(args.profile)
+    except (FileNotFoundError, ValueError) as err:
+        raise SystemExit(f"error: {err}")
+
+    candidates = rank.rank(profile_text)
+    if args.hiring_only:
+        candidates = [c for c in candidates if c["is_hiring"]]
+
+    try:
+        results = rerank.rerank(profile_text, candidates)
+    except RuntimeError as err:
+        raise SystemExit(f"error: {err}")
+
+    for r in results:
+        team = r["team_size"] if r["team_size"] else "unknown"
+        print(
+            f"{r['name']} | {r['one_liner']} | team {team} | "
+            f"{r['batch']} | hiring {r['is_hiring']} | {r['reason']}"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -48,6 +71,15 @@ def build_parser() -> argparse.ArgumentParser:
     rank_parser = sub.add_parser("rank", help="Rank companies against a profile file")
     rank_parser.add_argument("profile", help="Path to a plain-text profile file")
     rank_parser.set_defaults(func=cmd_rank)
+
+    rerank_parser = sub.add_parser("rerank", help="Re-rank top hits with the LLM")
+    rerank_parser.add_argument("profile", help="Path to a plain-text profile file")
+    rerank_parser.add_argument(
+        "--hiring-only",
+        action="store_true",
+        help="Only consider companies that are hiring",
+    )
+    rerank_parser.set_defaults(func=cmd_rerank)
 
     return parser
 
