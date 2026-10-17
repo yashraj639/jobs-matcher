@@ -2,6 +2,7 @@ import argparse
 
 from pipeline import clean, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
+from pipeline.founders import FoundersError, get_founders
 
 
 def cmd_fetch(args: argparse.Namespace) -> None:
@@ -61,6 +62,26 @@ def cmd_rerank(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_founders(args: argparse.Namespace) -> None:
+    for slug in args.slugs:
+        try:
+            founders = get_founders(slug)
+        except FoundersError as err:
+            raise SystemExit(f"error: {err}")
+
+        if not founders:
+            print(f"{slug} | (no active founders) | - | - | - | fetched")
+            continue
+
+        for f in founders:
+            linkedin = f["linkedin_url"] or "-"
+            twitter = f["twitter_url"] or "-"
+            print(
+                f"{slug} | {f['full_name']} | {f['title']} | "
+                f"{linkedin} | {twitter} | {f['source']}"
+            )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -87,6 +108,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Only consider companies that are hiring",
     )
     rerank_parser.set_defaults(func=cmd_rerank)
+
+    founders_parser = sub.add_parser("founders", help="Look up founders for company slugs")
+    founders_parser.add_argument("slugs", nargs="+", help="One or more YC company slugs")
+    founders_parser.set_defaults(func=cmd_founders)
 
     return parser
 
