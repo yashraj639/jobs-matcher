@@ -56,7 +56,7 @@ Goal: `python cli.py resume.pdf` prints the top 20 companies with a reason and a
 ### Step 2: Clean
 - Keep only companies that are active. Keep `isHiring == true` if that field exists.
 - Drop records with an empty description.
-- Store in SQLite table `companies` (id, name, slug, one_liner, long_description, tags, industries, team_size, batch, website, is_hiring).
+- Store in SQLite table `companies` (id, name, slug, one_liner, long_description, tags, industries, team_size, batch, website, is_hiring, stage, regions, launched_at, app_answers).
 - Print: count before, count after.
 - **Checkpoint:** The after-count should be a sane fraction of the total. If it dropped to 12 or didn't drop at all, the filter is wrong.
 
