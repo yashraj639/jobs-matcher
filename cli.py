@@ -1,6 +1,6 @@
 import argparse
 
-from pipeline import clean, embed
+from pipeline import clean, embed, rank
 from pipeline.fetch import fetch, print_samples
 
 
@@ -18,6 +18,19 @@ def cmd_embed(args: argparse.Namespace) -> None:
     embed.run()
 
 
+def cmd_rank(args: argparse.Namespace) -> None:
+    try:
+        profile_text = rank.load_profile(args.profile)
+    except (FileNotFoundError, ValueError) as err:
+        raise SystemExit(f"error: {err}")
+    results = rank.rank(profile_text)
+    for r in results[:20]:
+        print(
+            f"{r['name']} | {r['one_liner']} | team {r['team_size']} | "
+            f"{r['batch']} | hiring {r['is_hiring']} | {r['score']:.4f}"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -31,6 +44,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     embed_parser = sub.add_parser("embed", help="Embed companies into numpy files")
     embed_parser.set_defaults(func=cmd_embed)
+
+    rank_parser = sub.add_parser("rank", help="Rank companies against a profile file")
+    rank_parser.add_argument("profile", help="Path to a plain-text profile file")
+    rank_parser.set_defaults(func=cmd_rank)
 
     return parser
 
