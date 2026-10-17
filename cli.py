@@ -1,6 +1,6 @@
 import argparse
 
-from pipeline import clean
+from pipeline import clean, embed
 from pipeline.fetch import fetch, print_samples
 
 
@@ -14,6 +14,10 @@ def cmd_clean(args: argparse.Namespace) -> None:
     clean.run()
 
 
+def cmd_embed(args: argparse.Namespace) -> None:
+    embed.run()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -24,6 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     clean_parser = sub.add_parser("clean", help="Filter raw data into SQLite")
     clean_parser.set_defaults(func=cmd_clean)
+
+    embed_parser = sub.add_parser("embed", help="Embed companies into numpy files")
+    embed_parser.set_defaults(func=cmd_embed)
 
     return parser
 
