@@ -66,47 +66,55 @@ def _build_prompt(profile_text: str, payload: list[dict], top_n: int) -> str:
     )
 
 
-def _parse_picks(raw: dict, valid_ids: set[int]) -> list[dict]:
+def _parse_picks(raw: dict, valid_ids: set[int]) -> tuple[list[dict], int]:
+    """Return clean picks plus the count of entries dropped in validation."""
     picks = raw.get("picks")
     if not isinstance(picks, list) or not picks:
         raise LLMParseError("response has no non-empty 'picks' list")
 
     cleaned: list[dict] = []
     seen: set[int] = set()
+    rejected = 0
     for item in picks:
         if not isinstance(item, dict):
+            rejected += 1
             continue
         try:
             company_id = int(item.get("id"))
         except (TypeError, ValueError):
+            rejected += 1
             continue
         reason = item.get("reason")
         if company_id not in valid_ids or company_id in seen:
+            rejected += 1
             continue
         if not isinstance(reason, str) or not reason.strip():
+            rejected += 1
             continue
         seen.add(company_id)
         cleaned.append({"id": company_id, "reason": reason.strip()})
 
     if not cleaned:
         raise LLMParseError("no usable picks (unknown ids or missing reasons)")
-    return cleaned
+    return cleaned, rejected
 
 
-def rerank(
+def rerank_with_stats(
     profile_text: str, candidates: list[dict], top_n: int = DEFAULT_TOP_N
-) -> list[dict]:
+) -> tuple[list[dict], int]:
+    """Re-rank and also report how many picks were dropped in validation."""
     if not candidates:
-        return []
+        return [], 0
 
     valid_ids = {int(c["id"]) for c in candidates}
     payload = _build_payload(candidates, _load_descriptions(list(valid_ids)))
     prompt = _build_prompt(profile_text, payload, top_n)
 
     picks: list[dict] | None = None
+    rejected = 0
     for attempt in range(2):
         try:
-            picks = _parse_picks(generate_json(prompt), valid_ids)
+            picks, rejected = _parse_picks(generate_json(prompt), valid_ids)
             break
         except LLMParseError as err:
             if attempt == 1:
@@ -118,4 +126,11 @@ def rerank(
         candidate = dict(by_id[pick["id"]])
         candidate["reason"] = pick["reason"]
         results.append(candidate)
+    return results, rejected
+
+
+def rerank(
+    profile_text: str, candidates: list[dict], top_n: int = DEFAULT_TOP_N
+) -> list[dict]:
+    results, _ = rerank_with_stats(profile_text, candidates, top_n)
     return results

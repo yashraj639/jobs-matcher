@@ -37,15 +37,22 @@ def cmd_rerank(args: argparse.Namespace) -> None:
     except (FileNotFoundError, ValueError) as err:
         raise SystemExit(f"error: {err}")
 
-    candidates = rank.rank(profile_text)
     if args.hiring_only:
-        candidates = [c for c in candidates if c["is_hiring"]]
+        hiring = [c for c in rank.rank(profile_text, top_n=300) if c["is_hiring"]]
+        candidates = hiring[:50]
+    else:
+        candidates = rank.rank(profile_text)
 
     try:
-        results = rerank.rerank(profile_text, candidates)
+        results, rejected = rerank.rerank_with_stats(profile_text, candidates)
     except RuntimeError as err:
         raise SystemExit(f"error: {err}")
 
+    print(
+        f"candidates sent: {len(candidates)} | "
+        f"picks requested: {rerank.DEFAULT_TOP_N} | "
+        f"picks returned: {len(results)} | rejected: {rejected}"
+    )
     for r in results:
         team = r["team_size"] if r["team_size"] else "unknown"
         print(
