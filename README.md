@@ -4,13 +4,13 @@ Finds YC startups that fit a developer's profile, shows the founders, and drafts
 
 ## How it works
 
-1. **fetch** — downloads the YC company dataset (`all.json`) and saves it to `data/raw.json`.
-2. **clean** — keeps active companies with a description and stores them in SQLite (`data/yc.db`).
-3. **embed** — builds one text string per company and embeds them locally with `all-MiniLM-L6-v2`.
-4. **rank** — embeds the profile and ranks companies by cosine similarity, top 50.
-5. **rerank** — sends the top candidates and the profile to Gemini in one call, asks for the best picks with a one-sentence reason each.
-6. **founders** — looks up active founders from the company's YC page (name, title, LinkedIn, X).
-7. **draft** — sends the profile, company, and founder to Gemini in one call to draft a short email.
+1. **fetch**: downloads the YC company dataset (`all.json`) and saves it to `data/raw.json`.
+2. **clean**: keeps active companies with a description and stores them in SQLite (`data/yc.db`).
+3. **embed**: builds one text string per company and embeds them locally with `all-MiniLM-L6-v2`.
+4. **rank**: embeds the profile and ranks companies by cosine similarity, top 50.
+5. **rerank**: sends the top candidates and the profile to Gemini in one call, asks for the best picks with a one-sentence reason each.
+6. **founders**: looks up active founders from the company's YC page (name, title, LinkedIn, X).
+7. **draft**: sends the profile, company, and founder to Gemini in one call to draft a short email.
 
 Embeddings are local, so ranking costs nothing. Only rerank and draft call the LLM.
 
@@ -19,6 +19,8 @@ Embeddings are local, so ranking costs nothing. Only rerank and draft call the L
 ```
 uv sync
 ```
+
+The first `embed` run downloads a ~90MB model, and `uv sync` installs PyTorch, so setup takes a few minutes.
 
 Create a `.env` file in the project root:
 
@@ -29,12 +31,12 @@ SENDER_NAME=
 SENDER_LINKS=
 ```
 
-- `GEMINI_API_KEY` — key from Google AI Studio.
-- `GEMINI_MODEL` — model name exactly as shown in Google AI Studio.
-- `SENDER_NAME` — your name, used in the draft.
-- `SENDER_LINKS` — your links, used in the draft.
+- `GEMINI_API_KEY`: key from Google AI Studio.
+- `GEMINI_MODEL`: model name exactly as shown in Google AI Studio.
+- `SENDER_NAME`: your name, used in the draft.
+- `SENDER_LINKS`: your links, used in the draft.
 
-Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank and draft steps read this file. Profile files (`profile*.txt`) are gitignored.
+Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank, rerank, and draft steps read this file. Profile files (`profile*.txt`) are gitignored.
 
 ## Usage
 
@@ -52,15 +54,23 @@ uv run python cli.py draft profile.txt <slug>
 ```
 
 - `fetch` takes `--samples N` (default 5).
-- `rank` prints the top 20 matches. `rerank` prints the LLM's picks (up to 15) with a reason each.- `rerank --hiring-only` only considers companies flagged as hiring.
+- `rank` prints the top 20 matches. `rerank` prints the LLM's picks (up to 15) with a reason each.
+- `rerank --hiring-only` only considers companies flagged as hiring.
 - `founders` takes one or more YC company slugs.
 - `draft` prints the subject, body, founder contact, and word count.
 
 ## Example output
 
-TODO: paste a real output here
+`rerank --hiring-only` on a full-stack TypeScript profile (truncated to three rows):
 
-## Numbers
+```
+candidates sent: 50 | picks requested: 15 | picks returned: 12 | rejected: 0
+Windmill | Open-source platform to turn scripts into internal apps & workflows | team 7 | Summer 2022 | hiring 1 | Windmill is a 7-person team building an open-source developer tool where users write scripts in TypeScript and SQL to auto-generate UIs and workflows.
+Alguna | AI-Native CPQ & Billing for Modern Pricing Models | team 10 | Summer 2023 | hiring 1 | Alguna is an early-stage 10-person startup building billing and payment collection infrastructure for B2B SaaS companies.
+Lago | The AI Native Billing Platform | team 27 | Summer 2021 | hiring 1 | Lago builds an open-source billing platform to manage pricing models and billing infrastructure for SaaS companies.
+```
+
+## Numbers (as of Oct 17, 2026)
 
 - 6,307 companies fetched.
 - 4,334 active after cleaning.
@@ -73,6 +83,7 @@ TODO: paste a real output here
 - Founder lookups are cached in SQLite and rate-limited (2s between requests).
 - Drafts are validated in code: word limit, subject length, and banned phrases; failures retry once.
 - Nothing is ever sent automatically. The output is text you copy yourself.
+- Your profile text and company descriptions are sent to the Gemini API. On the free tier, Google may use requests to improve its products, so keep contact info out of `profile.txt`.
 
 ## Limitations
 
