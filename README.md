@@ -1,0 +1,91 @@
+# yc-jobs
+
+Finds YC startups that fit a developer's profile, shows the founders, and drafts a short outreach message. Drafts only, it never sends anything.
+
+## How it works
+
+1. **fetch** — downloads the YC company dataset (`all.json`) and saves it to `data/raw.json`.
+2. **clean** — keeps active companies with a description and stores them in SQLite (`data/yc.db`).
+3. **embed** — builds one text string per company and embeds them locally with `all-MiniLM-L6-v2`.
+4. **rank** — embeds the profile and ranks companies by cosine similarity, top 50.
+5. **rerank** — sends the top candidates and the profile to Gemini in one call, asks for the best picks with a one-sentence reason each.
+6. **founders** — looks up active founders from the company's YC page (name, title, LinkedIn, X).
+7. **draft** — sends the profile, company, and founder to Gemini in one call to draft a short email.
+
+Embeddings are local, so ranking costs nothing. Only rerank and draft call the LLM.
+
+## Setup
+
+```
+uv sync
+```
+
+Create a `.env` file in the project root:
+
+```
+GEMINI_API_KEY=
+GEMINI_MODEL=
+SENDER_NAME=
+SENDER_LINKS=
+```
+
+- `GEMINI_API_KEY` — key from Google AI Studio.
+- `GEMINI_MODEL` — model name exactly as shown in Google AI Studio.
+- `SENDER_NAME` — your name, used in the draft.
+- `SENDER_LINKS` — your links, used in the draft.
+
+Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank and draft steps read this file. Profile files (`profile*.txt`) are gitignored.
+
+## Usage
+
+Run the pipeline in order:
+
+```
+uv run python cli.py fetch
+uv run python cli.py clean
+uv run python cli.py embed
+uv run python cli.py rank profile.txt
+uv run python cli.py rerank profile.txt
+uv run python cli.py rerank profile.txt --hiring-only
+uv run python cli.py founders <slug> [<slug> ...]
+uv run python cli.py draft profile.txt <slug>
+```
+
+- `fetch` takes `--samples N` (default 5).
+- `rank` prints the top 20 matches. `rerank` prints the LLM's picks (up to 15) with a reason each.- `rerank --hiring-only` only considers companies flagged as hiring.
+- `founders` takes one or more YC company slugs.
+- `draft` prints the subject, body, founder contact, and word count.
+
+## Example output
+
+TODO: paste a real output here
+
+## Numbers
+
+- 6,307 companies fetched.
+- 4,334 active after cleaning.
+- 1,482 of those flagged hiring.
+
+## Design notes
+
+- One LLM call per rerank and one per draft.
+- Company embeddings are cached to disk and only recomputed when the company count changes.
+- Founder lookups are cached in SQLite and rate-limited (2s between requests).
+- Drafts are validated in code: word limit, subject length, and banned phrases; failures retry once.
+- Nothing is ever sent automatically. The output is text you copy yourself.
+
+## Limitations
+
+- The dataset goes stale. There is no refresh job; re-run `fetch` and `clean` to update.
+- `isHiring` can lag reality, so a flagged company may not actually be hiring.
+- MiniLM truncates long text, so only the start of a long description affects the ranking.
+- The profile quality drives the results; a thin profile gives generic matches.
+- Founder pages are scraped lightly, for personal use, with a cache and delay.
+
+## Roadmap
+
+Not built yet:
+
+- Streamlit UI (upload, ranked list, editable draft).
+- Indian startups beyond the YC dataset.
+- An eval set to score match quality.
