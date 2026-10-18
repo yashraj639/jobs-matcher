@@ -1,8 +1,14 @@
 import argparse
+import os
+from pathlib import Path
 
-from pipeline import clean, embed, rank, rerank
+from dotenv import load_dotenv
+
+from pipeline import clean, draft, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
 from pipeline.founders import FoundersError, get_founders
+
+ENV_PATH = Path(__file__).resolve().parent / ".env"
 
 
 def cmd_fetch(args: argparse.Namespace) -> None:
@@ -82,6 +88,43 @@ def cmd_founders(args: argparse.Namespace) -> None:
             )
 
 
+def cmd_draft(args: argparse.Namespace) -> None:
+    load_dotenv(ENV_PATH)
+    sender_name = os.environ.get("SENDER_NAME", "").strip()
+    if not sender_name:
+        raise SystemExit("error: SENDER_NAME is not set in .env")
+    links = os.environ.get("SENDER_LINKS", "").strip()
+
+    try:
+        profile_text = rank.load_profile(args.profile)
+    except (FileNotFoundError, ValueError) as err:
+        raise SystemExit(f"error: {err}")
+
+    try:
+        company = draft.load_company(args.slug)
+        founders = get_founders(args.slug)
+    except (draft.DraftError, FoundersError) as err:
+        raise SystemExit(f"error: {err}")
+
+    if not founders:
+        raise SystemExit(f"error: no active founders for '{args.slug}'")
+    founder = founders[0]
+
+    try:
+        result = draft.draft(
+            profile_text, company, founder, sender_name, links
+        )
+    except draft.DraftError as err:
+        raise SystemExit(f"error: {err}")
+
+    linkedin = founder["linkedin_url"] or "-"
+    twitter = founder["twitter_url"] or "-"
+    print(result["subject"])
+    print(result["body"])
+    print(f"To: {founder['full_name']} | {linkedin} | {twitter}")
+    print(f"words: {len(result['body'].split())}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cli.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -112,6 +155,11 @@ def build_parser() -> argparse.ArgumentParser:
     founders_parser = sub.add_parser("founders", help="Look up founders for company slugs")
     founders_parser.add_argument("slugs", nargs="+", help="One or more YC company slugs")
     founders_parser.set_defaults(func=cmd_founders)
+
+    draft_parser = sub.add_parser("draft", help="Draft an outreach email")
+    draft_parser.add_argument("profile", help="Path to a plain-text profile file")
+    draft_parser.add_argument("slug", help="YC company slug")
+    draft_parser.set_defaults(func=cmd_draft)
 
     return parser
 
