@@ -117,6 +117,7 @@ def _validate(raw: dict) -> list[str]:
     if reasons:
         return reasons
 
+    assert isinstance(subject, str) and isinstance(body, str)
     if len(body.split()) >= WORD_LIMIT:
         reasons.append(f"body must be under {WORD_LIMIT} words")
     if len(subject.split()) > SUBJECT_WORD_LIMIT:

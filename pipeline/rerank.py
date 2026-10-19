@@ -22,6 +22,8 @@ def _load_descriptions(ids: list[int]) -> dict[int, str]:
 
 
 def _team_size(value: object) -> str:
+    if not isinstance(value, (int, str)):
+        return UNKNOWN_TEAM
     try:
         size = int(value)  # may be None or garbage
     except (TypeError, ValueError):
@@ -77,8 +79,12 @@ def _parse_picks(raw: dict, valid_ids: set[int]) -> tuple[list[dict], int]:
         if not isinstance(item, dict):
             rejected += 1
             continue
+        raw_id = item.get("id")
+        if raw_id is None:
+            rejected += 1
+            continue
         try:
-            company_id = int(item.get("id"))
+            company_id = int(raw_id)
         except (TypeError, ValueError):
             rejected += 1
             continue

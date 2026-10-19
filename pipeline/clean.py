@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS companies (
 
 
 def load_raw(path: Path = RAW_PATH) -> list[dict]:
-    return json.loads(path.read_text())
+    records: list[dict] = json.loads(path.read_text())
+    return records
 
 
 def is_active(rec: dict) -> bool:

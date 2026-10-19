@@ -12,7 +12,8 @@ ALL_JSON_URL = "https://yc-oss.github.io/api/companies/all.json"
 
 def download(url: str = ALL_JSON_URL) -> list[dict]:
     with urllib.request.urlopen(url, timeout=30) as resp:
-        return json.load(resp)
+        records: list[dict] = json.load(resp)
+        return records
 
 
 def save_raw(records: list[dict], path: Path = RAW_PATH) -> Path:

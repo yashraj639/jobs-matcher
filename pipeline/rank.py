@@ -36,12 +36,14 @@ def _load_model() -> SentenceTransformer:
 
 @lru_cache(maxsize=1)
 def _load_embeddings() -> np.ndarray:
-    return np.load(EMB_PATH)
+    embeddings: np.ndarray = np.load(EMB_PATH)
+    return embeddings
 
 
 @lru_cache(maxsize=1)
 def _load_ids() -> np.ndarray:
-    return np.load(IDS_PATH)
+    ids: np.ndarray = np.load(IDS_PATH)
+    return ids
 
 
 @lru_cache(maxsize=1)
@@ -55,11 +57,13 @@ def _load_company_index() -> dict[int, sqlite3.Row]:
 
 
 def embed_profile(text: str) -> np.ndarray:
-    return _load_model().encode(
+    vectors: np.ndarray = _load_model().encode(
         [text],
         normalize_embeddings=True,
         convert_to_numpy=True,
-    )[0]
+    )
+    vector: np.ndarray = vectors[0]
+    return vector
 
 
 def rank(profile_text: str, top_n: int = 50) -> list[dict]:

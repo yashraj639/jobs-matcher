@@ -103,7 +103,7 @@ def _fetch_page(slug: str) -> str:
     _polite_wait()
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
-            body = resp.read()
+            body: bytes = resp.read()
     except urllib.error.HTTPError as err:
         if err.code == 429:
             raise FoundersError(
