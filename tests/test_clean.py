@@ -5,53 +5,53 @@ from pipeline.clean import has_description, is_active, not_declined_hiring, to_r
 
 # ── is_active ────────────────────────────────────────────────────────────────
 
-def test_is_active_true():
+def test_is_active_true() -> None:
     assert is_active({"status": "Active"}) is True
 
 
-def test_is_active_false():
+def test_is_active_false() -> None:
     assert is_active({"status": "Inactive"}) is False
 
 
-def test_is_active_missing():
+def test_is_active_missing() -> None:
     assert is_active({}) is False
 
 
 # ── has_description ──────────────────────────────────────────────────────────
 
-def test_has_description_long():
+def test_has_description_long() -> None:
     rec = {"long_description": "We build AI-powered widgets for enterprise.", "one_liner": ""}
     assert has_description(rec) is True
 
 
-def test_has_description_one_liner_only():
+def test_has_description_one_liner_only() -> None:
     rec = {"long_description": "", "one_liner": "The best widget maker."}
     assert has_description(rec) is True
 
 
-def test_has_description_empty():
+def test_has_description_empty() -> None:
     rec = {"long_description": "", "one_liner": ""}
     assert has_description(rec) is False
 
 
 # ── not_declined_hiring ──────────────────────────────────────────────────────
 
-def test_not_declined_hiring_true():
+def test_not_declined_hiring_true() -> None:
     assert not_declined_hiring({"isHiring": True}) is True
 
 
-def test_not_declined_hiring_false():
+def test_not_declined_hiring_false() -> None:
     assert not_declined_hiring({"isHiring": False}) is False
 
 
-def test_not_declined_hiring_missing():
+def test_not_declined_hiring_missing() -> None:
     # no key → kept (returns True)
     assert not_declined_hiring({}) is True
 
 
 # ── to_row ───────────────────────────────────────────────────────────────────
 
-def test_to_row_serializes_tags():
+def test_to_row_serializes_tags() -> None:
     rec = {
         "id": 42,
         "name": "Acme",
@@ -76,7 +76,7 @@ def test_to_row_serializes_tags():
     assert row["app_answers"] is None
 
 
-def test_to_row_is_hiring_false():
+def test_to_row_is_hiring_false() -> None:
     rec = {
         "id": 1,
         "name": "Foo",

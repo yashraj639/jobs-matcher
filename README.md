@@ -5,7 +5,7 @@ Finds YC startups that fit a developer's profile, shows the founders, and drafts
 ## How it works
 
 1. **fetch**: downloads the YC company dataset (`all.json`) and saves it to `data/raw.json`.
-2. **clean**: keeps active companies with a description and stores them in SQLite (`data/yc.db`).
+2. **clean**: keeps active companies with a description, drops any flagged as not hiring, and stores the result in SQLite (`data/yc.db`).
 3. **embed**: builds one text string per company and embeds them locally with `all-MiniLM-L6-v2`.
 4. **rank**: embeds the profile and ranks companies by cosine similarity, top 50.
 5. **rerank**: sends the top candidates and the profile to Gemini in one call, asks for the best picks with a one-sentence reason each.
@@ -36,7 +36,9 @@ SENDER_LINKS=
 - `SENDER_NAME`: your name, used in the draft.
 - `SENDER_LINKS`: your links, used in the draft.
 
-Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank, rerank, and draft steps read this file. Profile files (`profile*.txt`) are gitignored.
+Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank, rerank, and draft steps read this file. It is capped at 15,000 characters. Profile files (`profile*.txt`) are gitignored.
+
+`rerank` needs `GEMINI_API_KEY` and `GEMINI_MODEL`; `draft` needs those plus `SENDER_NAME`. The commands check for them up front and exit with an error if any are missing.
 
 ## Usage
 
@@ -54,14 +56,15 @@ uv run python cli.py draft profile.txt <slug>
 ```
 
 - `fetch` takes `--samples N` (default 5).
-- `rank` prints the top 20 matches. `rerank` prints the LLM's picks (up to 15) with a reason each.
+- `rank` logs the top 20 matches. `rerank` logs the LLM's picks (up to 15) with a reason each.
 - `rerank --hiring-only` only considers companies flagged as hiring.
 - `founders` takes one or more YC company slugs.
-- `draft` prints the subject, body, founder contact, and word count.
+- `draft` logs the subject, body, founder contact, and word count.
+- Status and result lines go through Python `logging` at INFO to stderr, in the form `INFO cli: <message>`.
 
 ## Example output
 
-`rerank --hiring-only` on a full-stack TypeScript profile (truncated to three rows):
+`rerank --hiring-only` on a full-stack TypeScript profile (from an earlier run, before the switch to logging; the `INFO cli:` prefixes are omitted). Truncated to three rows:
 
 ```
 candidates sent: 50 | picks requested: 15 | picks returned: 12 | rejected: 0
@@ -73,14 +76,14 @@ Lago | The AI Native Billing Platform | team 27 | Summer 2021 | hiring 1 | Lago 
 ## Numbers (as of Oct 17, 2026)
 
 - 6,307 companies fetched.
-- 4,334 active after cleaning.
-- 1,482 of those flagged hiring.
+- 4,334 active with a description.
+- The clean step also drops companies flagged as not hiring, leaving 1,482 in the database.
 
 ## Design notes
 
 - One LLM call per rerank and one per draft.
-- Company embeddings are cached to disk and only recomputed when the company count changes.
-- Founder lookups are cached in SQLite and rate-limited (2s between requests).
+- Company embeddings are cached to disk and only recomputed when the set of company IDs changes.
+- Founder lookups are cached in SQLite for 7 days and rate-limited (2s between requests).
 - Drafts are validated in code: word limit, subject length, and banned phrases; failures retry once.
 - Nothing is ever sent automatically. The output is text you copy yourself.
 - Your profile text and company descriptions are sent to the Gemini API. On the free tier, Google may use requests to improve its products, so keep contact info out of `profile.txt`.
@@ -92,6 +95,13 @@ Lago | The AI Native Billing Platform | team 27 | Summer 2021 | hiring 1 | Lago 
 - MiniLM truncates long text, so only the start of a long description affects the ranking.
 - The profile quality drives the results; a thin profile gives generic matches.
 - Founder pages are scraped lightly, for personal use, with a cache and delay.
+
+## Development
+
+```
+uv run pytest
+uv run mypy .
+```
 
 ## Roadmap
 

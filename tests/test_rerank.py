@@ -6,7 +6,7 @@ from pipeline.rerank import _parse_picks
 
 # ── valid input ───────────────────────────────────────────────────────────────
 
-def test_parse_picks_valid():
+def test_parse_picks_valid() -> None:
     raw = {"picks": [{"id": 1, "reason": "good fit"}]}
     picks, rejected = _parse_picks(raw, valid_ids={1})
     assert picks == [{"id": 1, "reason": "good fit"}]
@@ -15,14 +15,14 @@ def test_parse_picks_valid():
 
 # ── filtering ─────────────────────────────────────────────────────────────────
 
-def test_parse_picks_filters_unknown_id():
+def test_parse_picks_filters_unknown_id() -> None:
     raw = {"picks": [{"id": 99, "reason": "good fit"}]}
     with pytest.raises(LLMParseError):
         # no valid picks remain → raises
         _parse_picks(raw, valid_ids={1})
 
 
-def test_parse_picks_filters_unknown_id_count():
+def test_parse_picks_filters_unknown_id_count() -> None:
     """One valid, one unknown — unknown is rejected, count is 1."""
     raw = {"picks": [
         {"id": 1, "reason": "strong match"},
@@ -34,7 +34,7 @@ def test_parse_picks_filters_unknown_id_count():
     assert rejected == 1
 
 
-def test_parse_picks_filters_duplicate():
+def test_parse_picks_filters_duplicate() -> None:
     raw = {"picks": [
         {"id": 1, "reason": "first occurrence"},
         {"id": 1, "reason": "duplicate"},
@@ -44,7 +44,7 @@ def test_parse_picks_filters_duplicate():
     assert rejected == 1
 
 
-def test_parse_picks_filters_missing_reason():
+def test_parse_picks_filters_missing_reason() -> None:
     raw = {"picks": [
         {"id": 1, "reason": "   "},   # blank after strip
         {"id": 2, "reason": "valid reason"},
@@ -57,11 +57,11 @@ def test_parse_picks_filters_missing_reason():
 
 # ── error cases ───────────────────────────────────────────────────────────────
 
-def test_parse_picks_empty_raises():
+def test_parse_picks_empty_raises() -> None:
     with pytest.raises(LLMParseError):
         _parse_picks({"picks": []}, valid_ids={1})
 
 
-def test_parse_picks_no_picks_key():
+def test_parse_picks_no_picks_key() -> None:
     with pytest.raises(LLMParseError):
         _parse_picks({"foo": []}, valid_ids={1})
