@@ -7,7 +7,7 @@ RAW_PATH = Path(__file__).resolve().parent.parent / "data" / "raw.json"
 
 
 def download(url: str = ALL_JSON_URL) -> list[dict]:
-    with urllib.request.urlopen(url) as resp:
+    with urllib.request.urlopen(url, timeout=30) as resp:
         return json.load(resp)
 
 

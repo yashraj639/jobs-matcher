@@ -120,6 +120,8 @@ def rerank_with_stats(
             if attempt == 1:
                 raise LLMParseError(f"re-rank failed after retry: {err}") from err
 
+    assert picks is not None  # loop always sets picks or re-raises
+
     by_id = {int(c["id"]): c for c in candidates}
     results = []
     for pick in picks[:top_n]:

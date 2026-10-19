@@ -6,7 +6,7 @@ from pipeline.llm import generate_json
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
 
 DESC_LIMIT = 600
-WORD_LIMIT = 110
+WORD_LIMIT = 120
 SUBJECT_WORD_LIMIT = 7
 HOOK_MARKER = "[HOOK NEEDED]"
 
@@ -66,7 +66,7 @@ def _build_prompt(
         f"long_description: {company['long_description'][:DESC_LIMIT]}\n\n"
         f"## Founder\nfirst name: {founder_first}\n\n"
         "## Rules\n"
-        "1. Body under 110 words. Plain tone. No flattery.\n"
+        "1. Body under 120 words. Plain tone. No flattery.\n"
         "2. Structure: (a) one line on who I am and what I've built, "
         "(b) ONE hook that connects ONE specific thing from the company's "
         "own description to ONE specific project or experience from my "

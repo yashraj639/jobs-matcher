@@ -8,7 +8,6 @@ from google import genai
 from google.genai import types
 
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(ENV_PATH)
 
 ENV_KEY = "GEMINI_API_KEY"
 ENV_MODEL = "GEMINI_MODEL"
@@ -32,6 +31,7 @@ class LLMParseError(LLMError):
 
 
 def _api_key() -> str:
+    load_dotenv(ENV_PATH)
     key = os.environ.get(ENV_KEY, "").strip()
     if not key:
         raise LLMError(MISSING_KEY_HELP)
@@ -39,6 +39,7 @@ def _api_key() -> str:
 
 
 def _model_name() -> str:
+    load_dotenv(ENV_PATH)
     model = os.environ.get(ENV_MODEL, "").strip()
     if not model:
         raise LLMError(MISSING_MODEL_HELP)

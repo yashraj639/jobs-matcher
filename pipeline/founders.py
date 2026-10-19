@@ -5,7 +5,7 @@ import sqlite3
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
@@ -14,6 +14,7 @@ BASE_URL = "https://www.ycombinator.com/companies/"
 USER_AGENT = "personal-yc-job-matcher/0.1 (personal project; contact via GitHub)"
 TIMEOUT = 15
 FETCH_DELAY = 2.0
+CACHE_TTL_DAYS = 7
 
 DATA_PAGE_RE = re.compile(r'data-page="([^"]*)"')
 
@@ -64,13 +65,28 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _is_fresh(fetched_at: str | None) -> bool:
+    if not fetched_at:
+        return False
+    try:
+        fetched = datetime.fromisoformat(fetched_at)
+    except ValueError:
+        return False
+    if fetched.tzinfo is None:
+        fetched = fetched.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - fetched < timedelta(days=CACHE_TTL_DAYS)
+
+
 def _load_cached(slug: str) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             f"SELECT {', '.join(FIELDS)} FROM founders WHERE slug = ? ORDER BY user_id",
             (slug,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    records = [dict(row) for row in rows]
+    if not records or not _is_fresh(records[0].get("fetched_at")):
+        return []
+    return records
 
 
 def _polite_wait() -> None:

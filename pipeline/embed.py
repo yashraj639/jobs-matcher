@@ -46,10 +46,11 @@ def company_text(row: sqlite3.Row) -> str:
     return " ".join(p.strip() for p in parts if p and p.strip())
 
 
-def is_cached(count: int) -> bool:
+def is_cached(ids: np.ndarray) -> bool:
     if not (EMB_PATH.exists() and IDS_PATH.exists()):
         return False
-    return len(np.load(IDS_PATH)) == count
+    cached_ids = np.load(IDS_PATH)
+    return np.array_equal(cached_ids, ids)
 
 
 def embed_texts(texts: list[str]) -> np.ndarray:
@@ -65,11 +66,11 @@ def embed_texts(texts: list[str]) -> np.ndarray:
 
 def run() -> None:
     rows = load_companies()
-    if is_cached(len(rows)):
+    ids = np.array([row["id"] for row in rows], dtype=np.int64)
+    if is_cached(ids):
         print("cached")
         return
 
-    ids = np.array([row["id"] for row in rows], dtype=np.int64)
     texts = [company_text(row) for row in rows]
 
     start = time.time()

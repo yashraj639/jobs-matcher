@@ -58,9 +58,14 @@ def has_description(rec: dict) -> bool:
     return bool(long_desc or one_liner)
 
 
+def not_declined_hiring(rec: dict) -> bool:
+    return rec.get("isHiring") is not False
+
+
 def filter_records(records: list[dict]) -> list[dict]:
     active = [r for r in records if is_active(r)]
-    return [r for r in active if has_description(r)]
+    described = [r for r in active if has_description(r)]
+    return [r for r in described if not_declined_hiring(r)]
 
 
 def to_row(rec: dict) -> dict:
@@ -100,11 +105,11 @@ def save_sqlite(rows: list[dict], db_path: Path = DB_PATH) -> None:
 def run() -> None:
     records = load_raw()
     active = [r for r in records if is_active(r)]
+    described = [r for r in active if has_description(r)]
     kept = filter_records(records)
-    hiring = sum(1 for r in kept if r.get("isHiring"))
     save_sqlite([to_row(r) for r in kept])
     print(f"total: {len(records)}")
     print(f"after status filter: {len(active)}")
-    print(f"after description filter: {len(kept)}")
-    print(f"hiring among kept: {hiring}")
+    print(f"after description filter: {len(described)}")
+    print(f"after hiring filter: {len(kept)}")
     print(f"saved to {DB_PATH}")
