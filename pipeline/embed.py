@@ -1,4 +1,5 @@
 import json
+import logging
 import sqlite3
 import time
 from pathlib import Path
@@ -7,6 +8,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from pipeline.paths import DB_PATH, EMB_PATH, IDS_PATH
+
+logger = logging.getLogger(__name__)
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 BATCH_SIZE = 64
@@ -65,7 +68,7 @@ def run() -> None:
     rows = load_companies()
     ids = np.array([row["id"] for row in rows], dtype=np.int64)
     if is_cached(ids):
-        print("cached")
+        logger.info("cached")
         return
 
     texts = [company_text(row) for row in rows]
@@ -77,9 +80,9 @@ def run() -> None:
     np.save(EMB_PATH, embeddings)
     np.save(IDS_PATH, ids)
 
-    print(f"companies embedded: {len(rows)}")
-    print(f"embedding shape: {embeddings.shape}")
-    print(f"time taken: {elapsed:.2f}s")
+    logger.info(f"companies embedded: {len(rows)}")
+    logger.info(f"embedding shape: {embeddings.shape}")
+    logger.info(f"time taken: {elapsed:.2f}s")
 
 
 if __name__ == "__main__":

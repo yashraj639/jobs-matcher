@@ -1,8 +1,11 @@
 import json
+import logging
 import urllib.request
 from pathlib import Path
 
 from pipeline.paths import RAW_PATH
+
+logger = logging.getLogger(__name__)
 
 ALL_JSON_URL = "https://yc-oss.github.io/api/companies/all.json"
 
@@ -25,11 +28,11 @@ def fetch() -> list[dict]:
 
 
 def print_samples(records: list[dict], n: int = 5) -> None:
-    print(f"Total companies: {len(records)}")
+    logger.info(f"Total companies: {len(records)}")
     for rec in records[:n]:
-        print("-" * 60)
+        logger.info("-" * 60)
         for key, value in rec.items():
-            print(f"{key}: {value}")
+            logger.info(f"{key}: {value}")
 
 
 if __name__ == "__main__":

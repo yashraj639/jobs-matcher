@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 from pathlib import Path
 
@@ -10,10 +11,12 @@ from pipeline.founders import FoundersError, get_founders
 
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 
+logger = logging.getLogger(__name__)
+
 
 def cmd_fetch(args: argparse.Namespace) -> None:
     records = fetch()
-    print(f"Saved {len(records)} records to data/raw.json")
+    logger.info(f"Saved {len(records)} records to data/raw.json")
     print_samples(records, args.samples)
 
 
@@ -32,7 +35,7 @@ def cmd_rank(args: argparse.Namespace) -> None:
         raise SystemExit(f"error: {err}")
     results = rank.rank(profile_text)
     for r in results[:20]:
-        print(
+        logger.info(
             f"{r['name']} | {r['one_liner']} | team {r['team_size']} | "
             f"{r['batch']} | hiring {r['is_hiring']} | {r['score']:.4f}"
         )
@@ -55,14 +58,14 @@ def cmd_rerank(args: argparse.Namespace) -> None:
     except RuntimeError as err:
         raise SystemExit(f"error: {err}")
 
-    print(
+    logger.info(
         f"candidates sent: {len(candidates)} | "
         f"picks requested: {rerank.DEFAULT_TOP_N} | "
         f"picks returned: {len(results)} | rejected: {rejected}"
     )
     for r in results:
         team = r["team_size"] if r["team_size"] else "unknown"
-        print(
+        logger.info(
             f"{r['name']} | {r['one_liner']} | team {team} | "
             f"{r['batch']} | hiring {r['is_hiring']} | {r['reason']}"
         )
@@ -76,13 +79,13 @@ def cmd_founders(args: argparse.Namespace) -> None:
             raise SystemExit(f"error: {err}")
 
         if not founders:
-            print(f"{slug} | (no active founders) | - | - | - | fetched")
+            logger.info(f"{slug} | (no active founders) | - | - | - | fetched")
             continue
 
         for f in founders:
             linkedin = f["linkedin_url"] or "-"
             twitter = f["twitter_url"] or "-"
-            print(
+            logger.info(
                 f"{slug} | {f['full_name']} | {f['title']} | "
                 f"{linkedin} | {twitter} | {f['source']}"
             )
@@ -119,10 +122,10 @@ def cmd_draft(args: argparse.Namespace) -> None:
 
     linkedin = founder["linkedin_url"] or "-"
     twitter = founder["twitter_url"] or "-"
-    print(result["subject"])
-    print(result["body"])
-    print(f"To: {founder['full_name']} | {linkedin} | {twitter}")
-    print(f"words: {len(result['body'].split())}")
+    logger.info(result["subject"])
+    logger.info(result["body"])
+    logger.info(f"To: {founder['full_name']} | {linkedin} | {twitter}")
+    logger.info(f"words: {len(result['body'].split())}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -165,6 +168,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    logging.basicConfig(
+        format="%(levelname)s %(name)s: %(message)s",
+        level=logging.INFO,
+    )
     args = build_parser().parse_args()
     args.func(args)
 

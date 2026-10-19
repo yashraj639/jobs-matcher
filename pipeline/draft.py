@@ -1,7 +1,10 @@
+import logging
 import sqlite3
 
 from pipeline.llm import generate_json
 from pipeline.paths import DB_PATH
+
+logger = logging.getLogger(__name__)
 
 DESC_LIMIT = 600
 WORD_LIMIT = 120
@@ -153,9 +156,8 @@ def draft(
         if not reasons:
             body = raw["body"].strip()
             if HOOK_MARKER in body:
-                print(
-                    f"warning: no specific hook found; body contains "
-                    f"{HOOK_MARKER}"
+                logger.warning(
+                    f"no specific hook found; body contains {HOOK_MARKER}"
                 )
             return {"subject": raw["subject"].strip(), "body": body}
         prompt = _build_prompt(

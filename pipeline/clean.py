@@ -1,8 +1,11 @@
 import json
+import logging
 import sqlite3
 from pathlib import Path
 
 from pipeline.paths import DB_PATH, RAW_PATH
+
+logger = logging.getLogger(__name__)
 
 COLUMNS = [
     "id",
@@ -107,8 +110,8 @@ def run() -> None:
     described = [r for r in active if has_description(r)]
     kept = filter_records(records)
     save_sqlite([to_row(r) for r in kept])
-    print(f"total: {len(records)}")
-    print(f"after status filter: {len(active)}")
-    print(f"after description filter: {len(described)}")
-    print(f"after hiring filter: {len(kept)}")
-    print(f"saved to {DB_PATH}")
+    logger.info(f"total: {len(records)}")
+    logger.info(f"after status filter: {len(active)}")
+    logger.info(f"after description filter: {len(described)}")
+    logger.info(f"after hiring filter: {len(kept)}")
+    logger.info(f"saved to {DB_PATH}")
