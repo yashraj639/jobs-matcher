@@ -6,9 +6,8 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
+from pipeline.paths import DB_PATH
 
 BASE_URL = "https://www.ycombinator.com/companies/"
 USER_AGENT = "personal-yc-job-matcher/0.1 (personal project; contact via GitHub)"

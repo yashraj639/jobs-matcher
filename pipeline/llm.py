@@ -1,13 +1,12 @@
 import json
 import os
 from functools import lru_cache
-from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+from pipeline.paths import ENV_PATH
 
 ENV_KEY = "GEMINI_API_KEY"
 ENV_MODEL = "GEMINI_MODEL"

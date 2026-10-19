@@ -2,8 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-RAW_PATH = Path(__file__).resolve().parent.parent / "data" / "raw.json"
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
+from pipeline.paths import DB_PATH, RAW_PATH
 
 COLUMNS = [
     "id",

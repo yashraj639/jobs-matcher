@@ -1,9 +1,7 @@
 import sqlite3
-from pathlib import Path
 
 from pipeline.llm import generate_json
-
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
+from pipeline.paths import DB_PATH
 
 DESC_LIMIT = 600
 WORD_LIMIT = 120

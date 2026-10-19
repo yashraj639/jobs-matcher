@@ -1,10 +1,8 @@
 import json
 import sqlite3
-from pathlib import Path
 
 from pipeline.llm import LLMParseError, generate_json
-
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "yc.db"
+from pipeline.paths import DB_PATH
 
 DESC_LIMIT = 400
 DEFAULT_TOP_N = 15

@@ -6,10 +6,7 @@ from pathlib import Path
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-DB_PATH = DATA_DIR / "yc.db"
-EMB_PATH = DATA_DIR / "embeddings.npy"
-IDS_PATH = DATA_DIR / "embedding_ids.npy"
+from pipeline.paths import DB_PATH, EMB_PATH, IDS_PATH
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 BATCH_SIZE = 64

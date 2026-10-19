@@ -2,8 +2,9 @@ import json
 import urllib.request
 from pathlib import Path
 
+from pipeline.paths import RAW_PATH
+
 ALL_JSON_URL = "https://yc-oss.github.io/api/companies/all.json"
-RAW_PATH = Path(__file__).resolve().parent.parent / "data" / "raw.json"
 
 
 def download(url: str = ALL_JSON_URL) -> list[dict]:
