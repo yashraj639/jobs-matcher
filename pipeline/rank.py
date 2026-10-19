@@ -9,6 +9,8 @@ from pipeline.paths import DB_PATH, EMB_PATH, IDS_PATH
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
+MAX_PROFILE_CHARS = 15_000  # ~3,000 words, well within LLM context
+
 COMPANY_FIELDS = ("id", "name", "one_liner", "team_size", "batch", "is_hiring")
 
 
@@ -19,6 +21,11 @@ def load_profile(path: str | Path) -> str:
     text = profile_path.read_text(encoding="utf-8").strip()
     if not text:
         raise ValueError(f"profile file is empty: {profile_path}")
+    if len(text) > MAX_PROFILE_CHARS:
+        raise ValueError(
+            f"profile is too long ({len(text)} chars, max {MAX_PROFILE_CHARS}). "
+            "Trim it or use a shorter summary."
+        )
     return text
 
 
