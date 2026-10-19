@@ -14,6 +14,17 @@ ENV_PATH = Path(__file__).resolve().parent / ".env"
 logger = logging.getLogger(__name__)
 
 
+def check_env(keys: list[str]) -> None:
+    """Verify required env vars are set; raise SystemExit if not."""
+    load_dotenv(ENV_PATH)
+    missing = [k for k in keys if not os.environ.get(k, "").strip()]
+    if missing:
+        raise SystemExit(
+            f"error: missing env vars: {', '.join(missing)}\n"
+            "Add them to .env (see SPEC.md for details)."
+        )
+
+
 def cmd_fetch(args: argparse.Namespace) -> None:
     records = fetch()
     logger.info(f"Saved {len(records)} records to data/raw.json")
@@ -42,6 +53,7 @@ def cmd_rank(args: argparse.Namespace) -> None:
 
 
 def cmd_rerank(args: argparse.Namespace) -> None:
+    check_env(["GEMINI_API_KEY", "GEMINI_MODEL"])
     try:
         profile_text = rank.load_profile(args.profile)
     except (FileNotFoundError, ValueError) as err:
@@ -92,10 +104,8 @@ def cmd_founders(args: argparse.Namespace) -> None:
 
 
 def cmd_draft(args: argparse.Namespace) -> None:
-    load_dotenv(ENV_PATH)
-    sender_name = os.environ.get("SENDER_NAME", "").strip()
-    if not sender_name:
-        raise SystemExit("error: SENDER_NAME is not set in .env")
+    check_env(["GEMINI_API_KEY", "GEMINI_MODEL", "SENDER_NAME"])
+    sender_name = os.environ["SENDER_NAME"].strip()
     links = os.environ.get("SENDER_LINKS", "").strip()
 
     try:
