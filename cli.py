@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from pipeline import clean, draft, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
 from pipeline.founders import FoundersError, get_founders
+from pipeline.llm import LLMError
 
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 
@@ -44,7 +45,10 @@ def cmd_rank(args: argparse.Namespace) -> None:
         profile_text = rank.load_profile(args.profile)
     except (FileNotFoundError, ValueError) as err:
         raise SystemExit(f"error: {err}")
-    results = rank.rank(profile_text)
+    try:
+        results = rank.rank(profile_text)
+    except rank.RankError as err:
+        raise SystemExit(f"error: {err}")
     for r in results[:20]:
         logger.info(
             f"{r['name']} | {r['one_liner']} | team {r['team_size']} | "
@@ -59,11 +63,16 @@ def cmd_rerank(args: argparse.Namespace) -> None:
     except (FileNotFoundError, ValueError) as err:
         raise SystemExit(f"error: {err}")
 
-    if args.hiring_only:
-        hiring = [c for c in rank.rank(profile_text, top_n=300) if c["is_hiring"]]
-        candidates = hiring[:50]
-    else:
-        candidates = rank.rank(profile_text)
+    try:
+        if args.hiring_only:
+            hiring = [
+                c for c in rank.rank(profile_text, top_n=300) if c["is_hiring"]
+            ]
+            candidates = hiring[:50]
+        else:
+            candidates = rank.rank(profile_text)
+    except rank.RankError as err:
+        raise SystemExit(f"error: {err}")
 
     try:
         results, rejected = rerank.rerank_with_stats(profile_text, candidates)
@@ -127,7 +136,7 @@ def cmd_draft(args: argparse.Namespace) -> None:
         result = draft.draft(
             profile_text, company, founder, sender_name, links
         )
-    except draft.DraftError as err:
+    except (draft.DraftError, LLMError) as err:
         raise SystemExit(f"error: {err}")
 
     linkedin = founder["linkedin_url"] or "-"

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import sqlite3
@@ -7,12 +8,13 @@ from pathlib import Path
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from pipeline.paths import DB_PATH, EMB_PATH, IDS_PATH
+from pipeline.paths import DB_PATH, EMB_PATH, EMBEDDING_HASH_PATH, IDS_PATH
 
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 BATCH_SIZE = 64
+HASH_SEPARATOR = "\x00"
 
 
 def load_companies(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
@@ -46,11 +48,24 @@ def company_text(row: sqlite3.Row) -> str:
     return " ".join(p.strip() for p in parts if p and p.strip())
 
 
-def is_cached(ids: np.ndarray) -> bool:
-    if not (EMB_PATH.exists() and IDS_PATH.exists()):
+def text_hash(texts: list[str]) -> str:
+    """Hash company texts so changed text invalidates the embedding cache."""
+    joined = HASH_SEPARATOR.join(texts)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+def is_cached(ids: np.ndarray, texts: list[str]) -> bool:
+    if not (
+        EMB_PATH.exists()
+        and IDS_PATH.exists()
+        and EMBEDDING_HASH_PATH.exists()
+    ):
         return False
     cached_ids = np.load(IDS_PATH)
-    return np.array_equal(cached_ids, ids)
+    if not np.array_equal(cached_ids, ids):
+        return False
+    stored_hash = EMBEDDING_HASH_PATH.read_text(encoding="utf-8").strip()
+    return stored_hash == text_hash(texts)
 
 
 def embed_texts(texts: list[str]) -> np.ndarray:
@@ -67,11 +82,10 @@ def embed_texts(texts: list[str]) -> np.ndarray:
 def run() -> None:
     rows = load_companies()
     ids = np.array([row["id"] for row in rows], dtype=np.int64)
-    if is_cached(ids):
+    texts = [company_text(row) for row in rows]
+    if is_cached(ids, texts):
         logger.info("cached")
         return
-
-    texts = [company_text(row) for row in rows]
 
     start = time.time()
     embeddings = embed_texts(texts)
@@ -79,6 +93,7 @@ def run() -> None:
 
     np.save(EMB_PATH, embeddings)
     np.save(IDS_PATH, ids)
+    EMBEDDING_HASH_PATH.write_text(text_hash(texts), encoding="utf-8")
 
     logger.info(f"companies embedded: {len(rows)}")
     logger.info(f"embedding shape: {embeddings.shape}")

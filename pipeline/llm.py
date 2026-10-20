@@ -62,14 +62,19 @@ def _strip_fences(text: str) -> str:
 
 def generate_json(prompt: str) -> dict:
     """Send one prompt to Gemini and return the parsed JSON object."""
-    response = _client().models.generate_content(
-        model=_model_name(),
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.2,
-        ),
-    )
+    client = _client()
+    model = _model_name()
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2,
+            ),
+        )
+    except Exception as err:
+        raise LLMError(f"Gemini request failed: {err}") from err
 
     text = getattr(response, "text", None)
     if not text or not text.strip():
