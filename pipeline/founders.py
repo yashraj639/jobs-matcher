@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS founders (
 
 INDEX_SQL = "CREATE INDEX IF NOT EXISTS idx_founders_slug ON founders(slug)"
 
+CREATE_LOOKUPS_SQL = """
+CREATE TABLE IF NOT EXISTS founder_lookups (
+    slug TEXT PRIMARY KEY,
+    fetched_at TEXT NOT NULL
+)
+"""
+
 FIELDS = (
     "company_id",
     "slug",
@@ -61,6 +68,7 @@ def _connect() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute(CREATE_SQL)
     conn.execute(INDEX_SQL)
+    conn.execute(CREATE_LOOKUPS_SQL)
     return conn
 
 
@@ -76,16 +84,18 @@ def _is_fresh(fetched_at: str | None) -> bool:
     return datetime.now(timezone.utc) - fetched < timedelta(days=CACHE_TTL_DAYS)
 
 
-def _load_cached(slug: str) -> list[dict]:
+def _load_cached(slug: str) -> list[dict] | None:
     with _connect() as conn:
+        lookup = conn.execute(
+            "SELECT fetched_at FROM founder_lookups WHERE slug = ?", (slug,)
+        ).fetchone()
+        if lookup is None or not _is_fresh(lookup["fetched_at"]):
+            return None
         rows = conn.execute(
             f"SELECT {', '.join(FIELDS)} FROM founders WHERE slug = ? ORDER BY user_id",
             (slug,),
         ).fetchall()
-    records = [dict(row) for row in rows]
-    if not records or not _is_fresh(records[0].get("fetched_at")):
-        return []
-    return records
+    return [dict(row) for row in rows]
 
 
 def _polite_wait() -> None:
@@ -120,6 +130,19 @@ def _fetch_page(slug: str) -> str:
     return body.decode("utf-8", errors="replace")
 
 
+def _require_user_id(slug: str, founder: dict) -> int:
+    user_id = founder.get("user_id")
+    if user_id is not None:
+        try:
+            return int(user_id)
+        except (TypeError, ValueError):
+            pass
+    name = founder.get("full_name") or "unknown founder"
+    raise FoundersError(
+        f"active founder on page for {slug} has no usable user_id: {name}"
+    ) from None
+
+
 def _extract(html_text: str, slug: str) -> tuple[int, list[dict]]:
     match = DATA_PAGE_RE.search(html_text)
     if not match:
@@ -145,6 +168,8 @@ def _extract(html_text: str, slug: str) -> tuple[int, list[dict]]:
         raise FoundersError(f"props.company.founders for {slug} is not a list")
 
     active = [f for f in founders if isinstance(f, dict) and f.get("is_active")]
+    for founder in active:
+        _require_user_id(slug, founder)
     return int(company_id), active
 
 
@@ -173,15 +198,25 @@ def _store(company_id: int, slug: str, founders: list[dict]) -> list[dict]:
             f"INSERT INTO founders ({', '.join(FIELDS)}) VALUES ({placeholders})",
             [[row[c] for c in FIELDS] for row in rows],
         )
+        conn.execute(
+            "INSERT OR REPLACE INTO founder_lookups (slug, fetched_at) "
+            "VALUES (?, ?)",
+            (slug, fetched_at),
+        )
     return rows
 
 
-def get_founders(slug: str) -> list[dict]:
+def get_founders_with_source(slug: str) -> tuple[list[dict], str]:
     cached = _load_cached(slug)
-    if cached:
-        return [{**row, "source": "cached"} for row in cached]
+    if cached is not None:
+        return [{**row, "source": "cached"} for row in cached], "cached"
 
     html_text = _fetch_page(slug)
     company_id, active = _extract(html_text, slug)
     rows = _store(company_id, slug, active)
-    return [{**row, "source": "fetched"} for row in rows]
+    return [{**row, "source": "fetched"} for row in rows], "fetched"
+
+
+def get_founders(slug: str) -> list[dict]:
+    founders, _ = get_founders_with_source(slug)
+    return founders

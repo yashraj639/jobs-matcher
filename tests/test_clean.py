@@ -1,6 +1,14 @@
 import json
+import sqlite3
+from pathlib import Path
 
-from pipeline.clean import has_description, is_active, not_declined_hiring, to_row
+from pipeline.clean import (
+    has_description,
+    is_active,
+    not_declined_hiring,
+    save_sqlite,
+    to_row,
+)
 
 
 # ── is_active ────────────────────────────────────────────────────────────────
@@ -87,3 +95,51 @@ def test_to_row_is_hiring_false() -> None:
     }
     row = to_row(rec)
     assert row["is_hiring"] == 0
+
+
+def test_to_row_is_hiring_missing() -> None:
+    rec = {
+        "id": 1,
+        "name": "Foo",
+        "tags": [],
+        "industries": [],
+        "regions": [],
+    }
+    row = to_row(rec)
+    assert row["is_hiring"] is None
+
+
+# ── orphan founder cleanup ───────────────────────────────────────────────────
+
+def test_save_sqlite_deletes_orphan_founders(tmp_path: Path) -> None:
+    db = tmp_path / "yc.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "CREATE TABLE founders (company_id INTEGER, slug TEXT, user_id INTEGER)"
+        )
+        conn.execute(
+            "INSERT INTO founders (company_id, slug, user_id) VALUES (1, 'keep', 10)"
+        )
+        conn.execute(
+            "INSERT INTO founders (company_id, slug, user_id) VALUES (99, 'drop', 20)"
+        )
+
+    save_sqlite([to_row({"id": 1, "name": "Keep"})], db)
+
+    with sqlite3.connect(db) as conn:
+        remaining = conn.execute(
+            "SELECT company_id FROM founders ORDER BY company_id"
+        ).fetchall()
+    assert remaining == [(1,)]
+
+
+def test_save_sqlite_does_not_create_founders_table(tmp_path: Path) -> None:
+    db = tmp_path / "yc.db"
+
+    save_sqlite([to_row({"id": 1, "name": "Keep"})], db)
+
+    with sqlite3.connect(db) as conn:
+        table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'founders'"
+        ).fetchone()
+    assert table is None

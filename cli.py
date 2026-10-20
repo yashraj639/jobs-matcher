@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from pipeline import clean, draft, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
-from pipeline.founders import FoundersError, get_founders
+from pipeline.founders import FoundersError, get_founders, get_founders_with_source
 from pipeline.llm import LLMError
 
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -52,7 +52,8 @@ def cmd_rank(args: argparse.Namespace) -> None:
     for r in results[:20]:
         logger.info(
             f"{r['name']} | {r['one_liner']} | team {r['team_size']} | "
-            f"{r['batch']} | hiring {r['is_hiring']} | {r['score']:.4f}"
+            f"{r['batch']} | hiring {rank.format_hiring(r['is_hiring'])} | "
+            f"{r['score']:.4f}"
         )
 
 
@@ -64,13 +65,7 @@ def cmd_rerank(args: argparse.Namespace) -> None:
         raise SystemExit(f"error: {err}")
 
     try:
-        if args.hiring_only:
-            hiring = [
-                c for c in rank.rank(profile_text, top_n=300) if c["is_hiring"]
-            ]
-            candidates = hiring[:50]
-        else:
-            candidates = rank.rank(profile_text)
+        candidates = rank.rank(profile_text, hiring_only=args.hiring_only)
     except rank.RankError as err:
         raise SystemExit(f"error: {err}")
 
@@ -88,19 +83,20 @@ def cmd_rerank(args: argparse.Namespace) -> None:
         team = r["team_size"] if r["team_size"] else "unknown"
         logger.info(
             f"{r['name']} | {r['one_liner']} | team {team} | "
-            f"{r['batch']} | hiring {r['is_hiring']} | {r['reason']}"
+            f"{r['batch']} | hiring {rank.format_hiring(r['is_hiring'])} | "
+            f"{r['reason']}"
         )
 
 
 def cmd_founders(args: argparse.Namespace) -> None:
     for slug in args.slugs:
         try:
-            founders = get_founders(slug)
+            founders, source = get_founders_with_source(slug)
         except FoundersError as err:
             raise SystemExit(f"error: {err}")
 
         if not founders:
-            logger.info(f"{slug} | (no active founders) | - | - | - | fetched")
+            logger.info(f"{slug} | (no active founders) | - | - | - | {source}")
             continue
 
         for f in founders:

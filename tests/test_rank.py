@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from pipeline import rank as rank_module
 from pipeline.rank import (
     MAX_PROFILE_CHARS,
     RankError,
@@ -68,3 +69,38 @@ def test_validate_cache_extra_company() -> None:
     embeddings = np.zeros((1, 4))
     with pytest.raises(RankError, match="companies have no embedding"):
         validate_cache(ids, embeddings, _index(1, 2))
+
+
+# ── hiring filter ────────────────────────────────────────────────────────────
+
+def _company_row(company_id: int, is_hiring: int | None) -> dict:
+    return {
+        "id": company_id,
+        "name": f"Company {company_id}",
+        "one_liner": "Widgets",
+        "team_size": 10,
+        "batch": "W23",
+        "is_hiring": is_hiring,
+    }
+
+
+def test_rank_hiring_only_filters_before_slicing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ids = np.array([1, 2, 3], dtype=np.int64)
+    embeddings = np.array([[0.3, 0.0], [0.2, 0.0], [0.1, 0.0]])
+    index = {
+        1: _company_row(1, None),
+        2: _company_row(2, 0),
+        3: _company_row(3, 1),
+    }
+    monkeypatch.setattr(rank_module, "_load_embeddings", lambda: embeddings)
+    monkeypatch.setattr(rank_module, "_load_ids", lambda: ids)
+    monkeypatch.setattr(rank_module, "_load_company_index", lambda: index)
+    monkeypatch.setattr(
+        rank_module, "embed_profile", lambda text: np.array([1.0, 0.0])
+    )
+
+    results = rank_module.rank("profile", top_n=1, hiring_only=True)
+
+    assert [r["id"] for r in results] == [3]

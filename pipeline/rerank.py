@@ -40,7 +40,7 @@ def _build_payload(candidates: list[dict], descriptions: dict[int, str]) -> list
             "long_description": descriptions.get(int(c["id"]), "")[:DESC_LIMIT],
             "team_size": _team_size(c.get("team_size")),
             "batch": c.get("batch"),
-            "is_hiring": bool(c.get("is_hiring")),
+            "is_hiring": c.get("is_hiring"),
         }
         for c in candidates
     ]

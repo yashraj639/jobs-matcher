@@ -21,6 +21,12 @@ class RankError(RuntimeError):
     """The embedding cache is stale or does not match the companies table."""
 
 
+def format_hiring(value: object) -> str:
+    if value is None:
+        return "unknown"
+    return "1" if value == 1 else "0"
+
+
 def load_profile(path: str | Path) -> str:
     profile_path = Path(path)
     if not profile_path.is_file():
@@ -106,14 +112,16 @@ def validate_cache(
         )
 
 
-def rank(profile_text: str, top_n: int = 50) -> list[dict]:
+def rank(
+    profile_text: str, top_n: int = 50, hiring_only: bool = False
+) -> list[dict]:
     embeddings = _load_embeddings()
     ids = _load_ids()
     index = _load_company_index()
     validate_cache(ids, embeddings, index)
 
     scores = embeddings @ embed_profile(profile_text)
-    order = np.argsort(scores)[::-1][:top_n]
+    order = np.argsort(scores)[::-1]
 
     results = []
     for i in order:
@@ -121,6 +129,8 @@ def rank(profile_text: str, top_n: int = 50) -> list[dict]:
         row = index.get(company_id)
         if row is None:
             raise KeyError(f"embedding id {company_id} not found in companies table")
+        if hiring_only and row["is_hiring"] != 1:
+            continue
         results.append(
             {
                 "id": company_id,
@@ -132,4 +142,6 @@ def rank(profile_text: str, top_n: int = 50) -> list[dict]:
                 "score": float(scores[i]),
             }
         )
+        if len(results) >= top_n:
+            break
     return results

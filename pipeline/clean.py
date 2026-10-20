@@ -73,6 +73,7 @@ def filter_records(records: list[dict]) -> list[dict]:
 
 def to_row(rec: dict) -> dict:
     app_answers = rec.get("app_answers")
+    is_hiring = None if "isHiring" not in rec else int(bool(rec["isHiring"]))
     return {
         "id": rec.get("id"),
         "name": rec.get("name"),
@@ -84,12 +85,23 @@ def to_row(rec: dict) -> dict:
         "team_size": rec.get("team_size"),
         "batch": rec.get("batch"),
         "website": rec.get("website"),
-        "is_hiring": int(bool(rec.get("isHiring"))),
+        "is_hiring": is_hiring,
         "stage": rec.get("stage"),
         "regions": json.dumps(rec.get("regions") or []),
         "launched_at": rec.get("launched_at"),
         "app_answers": json.dumps(app_answers) if app_answers is not None else None,
     }
+
+
+def _delete_orphan_founders(conn: sqlite3.Connection) -> None:
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'founders'"
+    ).fetchone()
+    if exists is None:
+        return
+    conn.execute(
+        "DELETE FROM founders WHERE company_id NOT IN (SELECT id FROM companies)"
+    )
 
 
 def save_sqlite(rows: list[dict], db_path: Path = DB_PATH) -> None:
@@ -103,6 +115,7 @@ def save_sqlite(rows: list[dict], db_path: Path = DB_PATH) -> None:
             f"INSERT INTO companies ({cols}) VALUES ({placeholders})",
             [[row[c] for c in COLUMNS] for row in rows],
         )
+        _delete_orphan_founders(conn)
 
 
 def run() -> None:
@@ -114,5 +127,5 @@ def run() -> None:
     logger.info(f"total: {len(records)}")
     logger.info(f"after status filter: {len(active)}")
     logger.info(f"after description filter: {len(described)}")
-    logger.info(f"after hiring filter: {len(kept)}")
+    logger.info(f"after hiring filter (drops explicit isHiring=false): {len(kept)}")
     logger.info(f"saved to {DB_PATH}")

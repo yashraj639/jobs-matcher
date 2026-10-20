@@ -1,7 +1,16 @@
 import pytest
 
 from pipeline.llm import LLMParseError
-from pipeline.rerank import _parse_picks
+from pipeline.rerank import _build_payload, _parse_picks
+
+
+# ── payload ───────────────────────────────────────────────────────────────────
+
+def test_build_payload_preserves_unknown_hiring() -> None:
+    payload = _build_payload(
+        [{"id": 1, "name": "Acme", "is_hiring": None}], {}
+    )
+    assert payload[0]["is_hiring"] is None
 
 
 # ── valid input ───────────────────────────────────────────────────────────────
