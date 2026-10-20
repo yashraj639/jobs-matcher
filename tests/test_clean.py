@@ -2,13 +2,26 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from pipeline.clean import (
+    CleanError,
     has_description,
     is_active,
+    load_raw,
     not_declined_hiring,
     save_sqlite,
     to_row,
 )
+
+
+# ── load_raw ─────────────────────────────────────────────────────────────────
+
+def test_load_raw_missing_file(tmp_path: Path) -> None:
+    missing = tmp_path / "raw.json"
+
+    with pytest.raises(CleanError, match="cli.py fetch"):
+        load_raw(missing)
 
 
 # ── is_active ────────────────────────────────────────────────────────────────

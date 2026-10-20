@@ -7,6 +7,11 @@ from pipeline.paths import DB_PATH, RAW_PATH
 
 logger = logging.getLogger(__name__)
 
+
+class CleanError(RuntimeError):
+    """The raw dataset is missing or could not be cleaned."""
+
+
 COLUMNS = [
     "id",
     "name",
@@ -47,6 +52,11 @@ CREATE TABLE IF NOT EXISTS companies (
 
 
 def load_raw(path: Path = RAW_PATH) -> list[dict]:
+    if not path.is_file():
+        raise CleanError(
+            f"raw dataset not found: {path}. "
+            "Run `uv run python cli.py fetch` first."
+        )
     records: list[dict] = json.loads(path.read_text())
     return records
 

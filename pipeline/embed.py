@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from pipeline.paths import DB_PATH, EMB_PATH, EMBEDDING_HASH_PATH, IDS_PATH
 
@@ -69,6 +68,8 @@ def is_cached(ids: np.ndarray, texts: list[str]) -> bool:
 
 
 def embed_texts(texts: list[str]) -> np.ndarray:
+    from sentence_transformers import SentenceTransformer
+
     model = SentenceTransformer(MODEL_NAME)
     return model.encode(
         texts,

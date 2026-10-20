@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from pipeline import draft as draft_module
@@ -105,3 +107,14 @@ def test_draft_raises_when_hook_marker_persists(
         draft_module.draft(PROFILE, COMPANY, FOUNDER, "Yash", "")
 
     assert len(calls) == 2
+
+
+def test_load_company_missing_db(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db_path = tmp_path / "missing.db"
+    monkeypatch.setattr(draft_module, "DB_PATH", db_path)
+
+    with pytest.raises(draft_module.DraftError, match="cli.py clean"):
+        draft_module.load_company("acme")
+    assert not db_path.exists()

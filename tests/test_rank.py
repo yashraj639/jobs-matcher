@@ -38,6 +38,40 @@ def test_load_profile_too_long(tmp_path: Path) -> None:
         load_profile(p)
 
 
+# ── missing data files ───────────────────────────────────────────────────────
+
+def test_load_embeddings_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(rank_module, "EMB_PATH", tmp_path / "missing.npy")
+    rank_module._load_embeddings.cache_clear()
+
+    with pytest.raises(RankError, match="cli.py embed"):
+        rank_module._load_embeddings()
+
+
+def test_load_ids_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(rank_module, "IDS_PATH", tmp_path / "missing.npy")
+    rank_module._load_ids.cache_clear()
+
+    with pytest.raises(RankError, match="cli.py embed"):
+        rank_module._load_ids()
+
+
+def test_load_company_index_missing_db(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db_path = tmp_path / "missing.db"
+    monkeypatch.setattr(rank_module, "DB_PATH", db_path)
+    rank_module._load_company_index.cache_clear()
+
+    with pytest.raises(RankError, match="cli.py clean"):
+        rank_module._load_company_index()
+    assert not db_path.exists()
+
+
 # ── validate_cache ───────────────────────────────────────────────────────────
 
 def _index(*ids: int) -> dict[int, object]:

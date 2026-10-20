@@ -36,13 +36,15 @@ SENDER_LINKS=
 - `SENDER_NAME`: your name, used in the draft.
 - `SENDER_LINKS`: your links, used in the draft.
 
+Then restrict the key file to your user: `chmod 600 .env`.
+
 Write your profile as plain text in `profile.txt` (skills, projects, what you're looking for). The rank, rerank, and draft steps read this file. It is capped at 15,000 characters. Profile files (`profile*.txt`) are gitignored.
 
 `rerank` needs `GEMINI_API_KEY` and `GEMINI_MODEL`; `draft` needs those plus `SENDER_NAME`. The commands check for them up front and exit with an error if any are missing.
 
 ## Usage
 
-Run the pipeline in order:
+Run the pipeline in order. `rank` and `rerank` need the database from `clean` and the embeddings from `embed`; `draft` needs the database. If you re-run `clean` and the company ids change, `rank` fails with a clear error telling you to re-run `embed`. Missing data files also name the command to run first.
 
 ```
 uv run python cli.py fetch
@@ -60,7 +62,7 @@ uv run python cli.py draft profile.txt <slug>
 - `rerank --hiring-only` only considers companies flagged as hiring.
 - `founders` takes one or more YC company slugs.
 - `draft` logs the subject, body, founder contact, and word count.
-- Status and result lines go through Python `logging` at INFO to stderr, in the form `INFO cli: <message>`.
+- Status and result lines go through Python `logging` at INFO to stderr. Each module uses its own logger, so lines look like `INFO pipeline.clean: ...` or `INFO pipeline.fetch: ...`; the CLI itself logs as `INFO __main__:` when run as `python cli.py`.
 
 ## Example output
 
@@ -83,8 +85,8 @@ Lago | The AI Native Billing Platform | team 27 | Summer 2021 | hiring 1 | Lago 
 
 - One LLM call per rerank and one per draft.
 - Company embeddings are cached to disk and only recomputed when the set of company IDs changes.
-- Founder lookups are cached in SQLite for 7 days and rate-limited (2s between requests).
-- Drafts are validated in code: word limit, subject length, and banned phrases; failures retry once.
+- Founder lookups are cached in SQLite for 7 days, empty results included, and rate-limited (2s between requests).
+- Drafts are validated in code: word limit, subject length, and banned phrases. Validation or JSON parse failures retry once.
 - Nothing is ever sent automatically. The output is text you copy yourself.
 - Your profile text and company descriptions are sent to the Gemini API. On the free tier, Google may use requests to improve its products, so keep contact info out of `profile.txt`.
 

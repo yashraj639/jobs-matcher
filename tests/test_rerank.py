@@ -1,5 +1,6 @@
 import pytest
 
+from pipeline import rerank as rerank_module
 from pipeline.llm import LLMParseError
 from pipeline.rerank import _build_payload, _parse_picks
 
@@ -74,3 +75,35 @@ def test_parse_picks_empty_raises() -> None:
 def test_parse_picks_no_picks_key() -> None:
     with pytest.raises(LLMParseError):
         _parse_picks({"foo": []}, valid_ids={1})
+
+
+# ── retry / fallback ─────────────────────────────────────────────────────────
+
+def test_rerank_raises_after_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def fake_generate_json(prompt: str) -> dict:
+        calls.append(prompt)
+        raise LLMParseError("not JSON")
+
+    monkeypatch.setattr(rerank_module, "generate_json", fake_generate_json)
+    monkeypatch.setattr(rerank_module, "_load_descriptions", lambda ids: {})
+
+    with pytest.raises(LLMParseError, match="after retry"):
+        rerank_module.rerank_with_stats("profile", [{"id": 1}])
+    assert len(calls) == 2
+
+
+def test_rerank_raises_when_no_usable_picks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(rerank_module, "generate_json", lambda prompt: {"picks": []})
+    monkeypatch.setattr(
+        rerank_module, "_parse_picks", lambda raw, valid_ids: ([], 0)
+    )
+    monkeypatch.setattr(rerank_module, "_load_descriptions", lambda ids: {})
+
+    with pytest.raises(LLMParseError, match="no usable picks"):
+        rerank_module.rerank_with_stats("profile", [{"id": 1}])

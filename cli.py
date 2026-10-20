@@ -5,10 +5,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from pipeline import clean, draft, embed, rank, rerank
 from pipeline.fetch import fetch, print_samples
 from pipeline.founders import FoundersError, get_founders, get_founders_with_source
-from pipeline.llm import LLMError
 
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 
@@ -33,14 +31,23 @@ def cmd_fetch(args: argparse.Namespace) -> None:
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
-    clean.run()
+    from pipeline.clean import CleanError, run
+
+    try:
+        run()
+    except CleanError as err:
+        raise SystemExit(f"error: {err}")
 
 
 def cmd_embed(args: argparse.Namespace) -> None:
-    embed.run()
+    from pipeline.embed import run
+
+    run()
 
 
 def cmd_rank(args: argparse.Namespace) -> None:
+    from pipeline import rank
+
     try:
         profile_text = rank.load_profile(args.profile)
     except (FileNotFoundError, ValueError) as err:
@@ -58,6 +65,8 @@ def cmd_rank(args: argparse.Namespace) -> None:
 
 
 def cmd_rerank(args: argparse.Namespace) -> None:
+    from pipeline import rank, rerank
+
     check_env(["GEMINI_API_KEY", "GEMINI_MODEL"])
     try:
         profile_text = rank.load_profile(args.profile)
@@ -109,6 +118,9 @@ def cmd_founders(args: argparse.Namespace) -> None:
 
 
 def cmd_draft(args: argparse.Namespace) -> None:
+    from pipeline import draft, rank
+    from pipeline.llm import LLMError
+
     check_env(["GEMINI_API_KEY", "GEMINI_MODEL", "SENDER_NAME"])
     sender_name = os.environ["SENDER_NAME"].strip()
     links = os.environ.get("SENDER_LINKS", "").strip()

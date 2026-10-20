@@ -2,11 +2,14 @@ import sqlite3
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from pipeline.paths import DB_PATH, EMB_PATH, IDS_PATH
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
@@ -43,24 +46,41 @@ def load_profile(path: str | Path) -> str:
 
 
 @lru_cache(maxsize=1)
-def _load_model() -> SentenceTransformer:
+def _load_model() -> "SentenceTransformer":
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(MODEL_NAME)
 
 
 @lru_cache(maxsize=1)
 def _load_embeddings() -> np.ndarray:
+    if not EMB_PATH.is_file():
+        raise RankError(
+            f"embeddings not found: {EMB_PATH}. "
+            "Run `uv run python cli.py embed` first."
+        )
     embeddings: np.ndarray = np.load(EMB_PATH)
     return embeddings
 
 
 @lru_cache(maxsize=1)
 def _load_ids() -> np.ndarray:
+    if not IDS_PATH.is_file():
+        raise RankError(
+            f"embedding ids not found: {IDS_PATH}. "
+            "Run `uv run python cli.py embed` first."
+        )
     ids: np.ndarray = np.load(IDS_PATH)
     return ids
 
 
 @lru_cache(maxsize=1)
 def _load_company_index() -> dict[int, sqlite3.Row]:
+    if not DB_PATH.is_file():
+        raise RankError(
+            f"database not found: {DB_PATH}. "
+            "Run `uv run python cli.py clean` first."
+        )
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(

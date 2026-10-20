@@ -29,6 +29,11 @@ class DraftError(RuntimeError):
 
 
 def load_company(slug: str) -> dict:
+    if not DB_PATH.is_file():
+        raise DraftError(
+            f"database not found: {DB_PATH}. "
+            "Run `uv run python cli.py clean` first."
+        )
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(

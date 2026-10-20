@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -50,11 +51,26 @@ def _client() -> genai.Client:
     return genai.Client(api_key=_api_key())
 
 
+LANGUAGE_TAG_RE = re.compile(r"[A-Za-z0-9_.+-]*")
+
+
 def _strip_fences(text: str) -> str:
     text = text.strip()
-    if text.startswith("```"):
-        newline = text.find("\n")
-        text = text[newline + 1 :] if newline != -1 else ""
+    if not text.startswith("```"):
+        return text
+
+    text = text[3:]
+    newline = text.find("\n")
+    if newline != -1:
+        # Language tag (if any) sits on the opening line.
+        text = text[newline + 1 :]
+    else:
+        # No newline, so the tag may be glued to the JSON: ```json{"a":1}```
+        tag = LANGUAGE_TAG_RE.match(text)
+        rest = text[tag.end() :] if tag else text
+        if rest.lstrip().startswith(("{", "[")):
+            text = rest
+
     if text.endswith("```"):
         text = text[:-3]
     return text.strip()

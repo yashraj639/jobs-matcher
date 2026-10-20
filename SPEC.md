@@ -46,7 +46,7 @@ yc-matcher/
 
 ## Phase 1: CLI, just me
 
-Goal: `python cli.py resume.pdf` prints the top 20 companies with a reason and a draft email for each.
+Goal: `uv run python cli.py rank profile.txt` prints the top 20 companies by score; `rerank profile.txt` adds a reason per pick and `draft profile.txt <slug>` drafts an email. Deviation from the original plan: the profile is plain text in `profile.txt` (not a parsed resume PDF), and each pipeline step runs as a separate command.
 
 ### Step 1: Fetch
 - Pull the YC company dataset (yc-oss GitHub dump, `all.json`). Save raw JSON to `data/raw.json`.

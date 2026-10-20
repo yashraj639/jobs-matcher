@@ -114,7 +114,7 @@ def rerank_with_stats(
     payload = _build_payload(candidates, _load_descriptions(list(valid_ids)))
     prompt = _build_prompt(profile_text, payload, top_n)
 
-    picks: list[dict] | None = None
+    picks: list[dict] = []
     rejected = 0
     for attempt in range(2):
         try:
@@ -124,7 +124,8 @@ def rerank_with_stats(
             if attempt == 1:
                 raise LLMParseError(f"re-rank failed after retry: {err}") from err
 
-    assert picks is not None  # loop always sets picks or re-raises
+    if not picks:
+        raise LLMParseError("re-rank produced no usable picks")
 
     by_id = {int(c["id"]): c for c in candidates}
     results = []
